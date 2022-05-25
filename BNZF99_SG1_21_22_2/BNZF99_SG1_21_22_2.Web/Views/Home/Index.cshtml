@@ -3,6 +3,306 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Artist editor window</h1>
+
+    <div id="artist-handler-app">
+        <div class="button-container pb-3" style="text-align:center;">
+            <button class="btn btn-secondary" v-on:click="loadArtists">Load</button>
+            <button class="btn btn-success" v-on:click="createArtist">Create</button>
+            <button v-if="operationMode != 0" class="btn btn-secondary" v-on:click="backToList">Back to list</button>
+        </div>
+        <div id="content" style="display: flex; justify-content: center; flex-wrap: wrap;">
+            <div v-if="errors.length > 0">
+                <span v-for="msg in errors" style="color:red;font-weight:bold;">{{ msg }}</span>
+            </div>
+            <div v-if="messages.length > 0">
+                <span v-for="msg in messages" style="color:green;">{{ msg }}</span>
+            </div>
+            <template v-if="operationMode == 0">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Name</th>
+                            <th>Born</th>
+                            <th>RecordLabel</th>
+                            @*<th>Instrument</th>*@
+                            <th>IsOnRehab</th>
+                            <th>EndOfContract</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="artist in artists">
+                            <td>{{ artist.id }}</td>
+                            <td>{{ artist.name }}</td>
+                            <td>{{ artist.born }}</td>
+                            <td>{{ artist.recordLabel }}</td>
+                            @*<td>{{ artist.instrument }}</td>*@
+                            <td>{{ artist.isOnRehab }}</td>
+                            <td>{{ artist.endOfContract }}</td>
+                            <td style="width:20%;text-align:right;">
+                                <button class="btn btn-info" v-on:click="viewArtist(artist)">View</button>
+                                <button class="btn btn-warning" v-on:click="editArtist(artist)">Edit</button>
+                                <button class="btn btn-danger" v-on:click="deleteArtist(artist)">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </template>
+            <template v-else-if="operationMode == 1">
+                <!--View-->
+                <view-component v-bind:artist="selectedArtist"></view-component>
+            </template>
+            <template v-else-if="operationMode == 2">
+                <editor-component v-on:saved="savedSuccessfully"
+                                  v-on:cancelled="operationCancelled"></editor-component>
+            </template>
+            <template v-else>
+                <editor-component v-bind:artist="selectedArtist"
+                                  v-on:saved="savedSuccessfully"
+                                  v-on:cancelled="operationCancelled"></editor-component>
+            </template>
+        </div>
+    </div>
 </div>
+
+<script src="~/lib/vue/dist/vue.js"></script>
+<script src="~/lib/axios/dist/axios.js"></script>
+
+<script type="text/javascript">
+
+    const axi = axios.create({
+        baseURL: 'http://localhost:41745/api/Artist/'
+    });
+
+    var artistHandlerApp = new Vue({
+        el: '#artist-handler-app',
+        data: {
+            artists: [],
+            selectedArtist: {},
+            operationMode: 0,
+            messages: [],
+            errors: []
+        },
+        computed: {
+            enableBackToList() {
+                return this.operationMode != 0;
+            }
+        },
+        methods: {
+            loadArtists() {
+                axi.get('GetAll').then((response) => {
+                    this.artists = response.data;
+                    console.log(response.data);
+                }).catch((err) => {
+                    console.log(err);
+                });
+            },
+            viewArtist: function (artist) {
+                this.selectedArtist = artist;
+                this.operationMode = 1;
+            },
+            createArtist: function () {
+                this.operationMode = 2;
+            },
+            editArtist: function (artist) {
+                this.selectedArtist = artist;
+                this.operationMode = 3;
+            },
+            deleteArtist: function (artist) {
+                axi.delete('Delete/' + artist.id).then((response) => {
+                    if (response.data.isSuccess) {
+                        this.messages.push("Artist deleted successfully");
+                        this.loadArtists();
+
+                        setTimeout(() => { this.errors = []; }, 3000);
+                    } else {
+                        this.errors = response.data.messages;
+                        setTimeout(() => { this.errors = []; }, 3000);
+                    }
+                }).catch((err) => {
+                    this.errors.push('Error occured during delete.');
+                    setTimeout(() => { this.errors = []; }, 3000);
+                });
+
+            },
+            backToList() {
+                this.selectedArtist = {};
+                this.operationMode = 0;
+            },
+            savedSuccessfully(msg) {
+                this.selectedArtist = {};
+                this.messages.push(msg);
+                console.log("saved");
+                this.loadArtists();
+                this.operationMode = 0;
+
+                setTimeout(() => { this.messages = []; }, 3000);
+            },
+            operationCancelled() {
+                this.selectedArtist = {};
+                this.messages.push("The operation has been cancelled.");
+
+                console.warn("cancelled");
+                this.operationMode = 0;
+                setTimeout(() => { this.messages = []; }, 3000);
+            }
+
+
+        }
+    });
+
+    Vue.component('view-component', {
+        props: ['artist'],
+        template: '#view-template'
+    })
+
+    Vue.component('editor-component', {
+        props: ['artist'],
+        template: '#editor-template',
+        data: function () {
+            return {
+                innerArtist: {},
+                instruments: [],
+                isEdit: false,
+                errors: []
+            };
+        },
+        methods: {
+            saved() {
+                if (this.isEdit) {
+                    axi.put('Update', this.innerArtist).then(this.handleSuccess).catch((err) => {
+                        console.log(err);
+                        this.handleError(['Error occured during processing.']);
+                    });
+
+                }
+                else {
+                    axi.post('Create', this.innerArtist).then(this.handleSuccess).catch((err) => {
+                        console.log(err);
+                        this.handleError(['Error occured during processing.']);
+                    });
+                }
+            },
+            cancelled() {
+                this.$emit('cancelled');
+            },
+            handleSuccess(response) {
+                if (response.data.isSuccess) {
+                    this.$emit('saved', this.isEdit ? "Artist edited successfully" : "Artist created successfully");
+                } else {
+                    this.handleSuccess(response.data.messages);
+                }
+            },
+            handleError(errorMessages) {
+                this.errors = errorMessages;
+
+                setTimeout(() => { this.errors = []; }, 3000);
+            }
+        },
+        created: function () {
+            if (this.artist != undefined) {
+                this.isEdit = true;
+
+                this.innerArtist = {
+                    id: this.artist.id,
+                    name: this.artist.name,
+                    born: this.artist.born,
+                    recordLabel: this.artist.recordLabel,
+                    /*instrument: this.artist.instrument,*/
+                    isOnRehab: this.artist.isOnRehab,
+                    endOfContract: this.artist.endOfContract
+                };
+            } else {
+                this.innerArtist = {
+                    id: 0,
+                    name: '',
+                    born: new Date(),
+                    recordLabel: '',
+                    /*//instrument: 0,*/
+                    isOnRehab: '',
+                    endOfContract: new Date(),
+                };
+            }
+
+            //axi.get("GetAllInstruments").then((response) => {
+            //    this.instruments = response.data;
+            //}).catch((err) => {
+            //    console.log(err);
+            //});
+        }
+    });
+</script>
+
+<script type="text/x-template" id="view-template">
+    <div class="view-style">
+        <div>
+            <strong>Id</strong><br />
+            <label>{{ artist.id }}</label>
+        </div>
+        <div>
+            <strong>Name</strong><br />
+            <label>{{ artist.name }}</label>
+        </div>
+        <div>
+            <strong>Born</strong><br />
+            <label>{{ artist.born }}</label>
+        </div>
+        <div>
+            <strong>RecordLabel</strong><br />
+            <label>{{ artist.recordLabel }}</label>
+        </div>
+        @*<div>
+                <strong>Instrument</strong><br />
+                <label>{{ artist.instrument }}</label>
+            </div>*@
+        <div>
+            <strong>IsOnRehab</strong><br />
+            <label>{{ artist.isOnRehab }}</label>
+        </div>
+        <div>
+            <strong>EndOfContract</strong><br />
+            <label>{{ artist.endOfContract }}</label>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-template" id="editor-template">
+    <div class="view-style">
+        <div v-if="errors.length > 0">
+            <span v-for="msg in errors" style="color:red;font-weight:bold;">{{ msg }}</span>
+        </div>
+        <div>
+            <strong>Name</strong><br />
+            <input type="text" v-model="innerArtist.name" class="form-control" />
+        </div>
+        <div>
+            <strong>Born</strong><br />
+            <input type="date" v-model="innerArtist.born" class="form-control" />
+        </div>
+        <div>
+            <strong>Record label</strong><br />
+            <input type="text" v-model="innerArtist.recordLabel" class="form-control" />
+        </div>
+        @*<div>
+                <strong>Instrument</strong><br />
+                <input type="number" v-model="innerArtist.instrument" class="form-control" />
+            </div>*@
+        <div>
+            <strong>On rehab</strong><br />
+            <input type="checkbox" v-model="innerArtist.isOnRehab" class="form-control" />
+        </div>
+        <div>
+            <strong>End of contract</strong><br />
+            <input type="date" v-model="innerArtist.endOfContract" class="form-control" />
+        </div>
+
+
+        <div class="float-right pt-3">
+            <button class="btn btn-primary" v-on:click="saved">Save</button>
+            <button class="btn btn-secondary" v-on:click="cancelled">Cancel</button>
+        </div>
+    </div>
+</script>
+
