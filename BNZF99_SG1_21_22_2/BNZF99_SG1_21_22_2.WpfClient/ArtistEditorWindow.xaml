@@ -1,0 +1,52 @@
+﻿<Window x:Class="BNZF99_SG1_21_22_2.WpfClient.ArtistEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ViewModel="clr-namespace:BNZF99_SG1_21_22_2.WpfClient.ViewModels"
+        mc:Ignorable="d"
+        Title="ArtistEditorWindow" Height="300" Width="600" Loaded="Window_Loaded">
+    <Window.Resources>
+        <ViewModel:ArtistEditorWindowVM x:Key="VM"/>
+    </Window.Resources>
+    <Grid DataContext="{StaticResource VM}">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="4" Text="Artists editor" Margin="5" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="24" TextAlignment="Center" />
+
+        <TextBlock Text="Name:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <TextBox Grid.Row="1" Grid.Column="1" Height="20" VerticalAlignment="Center" Margin="5" Text="{Binding CurrentArtist.Name}" IsEnabled="{Binding EditEnabled}"/>
+        <TextBlock Text="Born:" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <DatePicker Grid.Row="1" Grid.Column="3" Height="20" Margin="5" VerticalAlignment="Center" SelectedDate="{Binding CurrentArtist.Born}" IsEnabled="{Binding EditEnabled}"/>
+
+        <TextBlock Text="Record label:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <TextBox Grid.Row="2" Grid.Column="1" Height="20" VerticalAlignment="Center" Margin="5" Text="{Binding CurrentArtist.RecordLabel}" IsEnabled="{Binding EditEnabled}"/>
+        <TextBlock Text="Instrument:" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <ComboBox Grid.Row="2" Grid.Column="3" Height="20" Margin="5" VerticalAlignment="Center" ItemsSource="{Binding MusicalInstruments}" SelectedItem="{Binding CurrentArtist.Instrument}" IsEnabled="{Binding EditEnabled}"/>
+
+        <TextBlock Text="Contract ends:" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <DatePicker Grid.Row="3" Grid.Column="1" Height="20" Margin="5" VerticalAlignment="Center" SelectedDate="{Binding CurrentArtist.EndOfContract}" IsEnabled="{Binding EditEnabled}"/>
+        <TextBlock Text="On rehab:" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="16" />
+        <CheckBox Grid.Row="3" Grid.Column="3" VerticalAlignment="Center" Margin="5" IsChecked="{Binding CurrentArtist.IsOnRehab}" IsHitTestVisible="{Binding EditEnabled}"/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.ColumnSpan="4" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Button Content="OK" IsDefault="True" Margin="5" Click="OkClick"/>
+            <Button Content="Cancel" IsCancel="True" Margin="5" Click="CancelClick" Visibility="{Binding CancelButtonVisibility}"/>
+        </StackPanel>
+
+    </Grid>
+</Window>
